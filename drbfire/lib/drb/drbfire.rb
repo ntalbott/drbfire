@@ -67,7 +67,7 @@ require 'drb'
 
 module DRbFire
   # The current version.
-  VERSION = [0, 0, 5]
+  VERSION = [0, 0, 6]
   
   # The role configuration key.
   ROLE = "#{self}::ROLE"
