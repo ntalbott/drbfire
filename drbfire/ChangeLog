@@ -1,0 +1,3 @@
+Thu Jan 15 20:59:08 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+        * Changed how client id's are packed.
