@@ -6,6 +6,7 @@
 
 require 'delegate'
 require 'drb'
+require 'timeout'
 
 # = DRb Firewall Protocol
 # 
@@ -67,7 +68,7 @@ require 'drb'
 
 module DRbFire
   # The current version.
-  VERSION = [0, 0, 6]
+  VERSION = [0, 0, 7]
   
   # The role configuration key.
   ROLE = "#{self}::ROLE"

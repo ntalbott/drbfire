@@ -1,3 +1,9 @@
+Sun Jan 18 22:24:10 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* Release 0.0.7.
+
+	* lib/drb/drbfire.rb: forgot to require timeout.
+
 Sun Jan 18 22:09:51 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* Release 0.0.6.
