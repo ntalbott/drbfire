@@ -1,3 +1,7 @@
+Thu Jan 15 21:01:02 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+        * Release 0.0.2.
+
 Thu Jan 15 20:59:08 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
         * Changed how client id's are packed.
