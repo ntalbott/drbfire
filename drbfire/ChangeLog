@@ -1,3 +1,15 @@
+Wed Feb 25 20:05:10 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* Release 0.1.0.
+
+	* lib/drb/drbfire.rb: Simplified to only use one port.
+
+	* test/test_drbfire.rb: Removed obsolete tests related to the above
+	  change.
+
+	* lib/drb/drbfire.rb: Added id wrapping and one server per process
+	  caveats to the documentation.
+
 Sun Jan 18 22:24:10 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* Release 0.0.7.
