@@ -2,6 +2,8 @@ require 'delegate'
 require 'drb'
 
 module DRbFire
+  VERSION = [0, 0, 5]
+  
   # Configuration keys
   ROLE = "#{self}::ROLE"
   DELEGATE = "#{self}::DELEGATE"
@@ -45,9 +47,13 @@ module DRbFire
     class ClientServerProxy
       def initialize(connection, id)
         @connection = connection
-	DEBUG["writing id", id]
-        @connection.stream.write([id].pack(ID_FORMAT))
+        @id = id
         @queue = Queue.new
+      end
+
+      def write_signal_id
+	DEBUG["writing id", @id]
+        @connection.stream.write([@id].pack(ID_FORMAT))
       end
 
       def push(connection)
@@ -56,13 +62,15 @@ module DRbFire
 
       def open
         @connection.stream.write("0")
-        @queue.pop
+        timeout(20) do
+          @queue.pop
+        end
+      rescue TimeoutError
+        raise DRb::DRbConnError, "Unable to get a client connection."
       end
     end
 
     class << self
-      attr_reader :client_servers
-
       def server?(config)
         raise "Invalid configuration" unless(config.include?(ROLE))
         config[ROLE] == SERVER
@@ -118,6 +126,14 @@ module DRbFire
         else
           @client_servers[parse_uri(uri).last.to_i].open
         end
+      end
+
+      def add_client_connection(id, connection)
+        @client_servers[id].push(connection)
+      end
+
+      def add_client_server(id, server)
+        @client_servers[id] = server
       end
 
       def signal_uri(uri)
@@ -176,10 +192,15 @@ module DRbFire
           rescue IOError
             return nil
           end
-          id = connection.stream.read(4).unpack(ID_FORMAT).first
+          begin
+            id = connection.stream.read(4).unpack(ID_FORMAT).first
+          rescue
+            next
+          end
+          next unless(id)
 	  DEBUG["accepted id", id]
           return connection if(id == 0)
-          self.class.client_servers[id].push(connection)
+          self.class.add_client_connection(id, connection)
         end
       end
     end
@@ -195,9 +216,8 @@ module DRbFire
               new_id = (id += 1)
             end
             client_server = ClientServerProxy.new(client, new_id)
-            m.synchronize do
-              self.class.client_servers[new_id] = client_server
-            end
+            self.class.add_client_server(new_id, client_server)
+            client_server.write_signal_id
           end
         end
       end

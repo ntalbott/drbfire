@@ -25,7 +25,7 @@ module DRbFire
         signal = TCPServer.new(TEST_IP, TEST_SIGNAL_PORT)
         Thread.start do
           client = signal.accept
-          client.write([5].pack("L"))
+          client.write([5].pack(ID_FORMAT))
           client.write(0)
           client = main.accept
           client.write("a")
@@ -48,10 +48,10 @@ module DRbFire
         begin
           timeout(1) do
             c = TCPSocket.open(TEST_IP, TEST_PORT)
-            id = signal.read(4).unpack("L").first
-            c.write([id].pack("L"))
+            id = signal.read(4).unpack(ID_FORMAT).first
+            c.write([id].pack(ID_FORMAT))
             assert_equal(1, id)
-            assert_equal(2, signal2.read(4).unpack("L").first)
+            assert_equal(2, signal2.read(4).unpack(ID_FORMAT).first)
           end
         ensure
           s.close
@@ -71,9 +71,9 @@ module DRbFire
         end
       end
       main = TCPSocket.open(TEST_IP, TEST_PORT)
-      main.write([0].pack("L"))
+      main.write([0].pack(ID_FORMAT))
       signal = TCPSocket.open(TEST_IP, TEST_SIGNAL_PORT)
-      id = signal.read(4).unpack("L").first
+      id = signal.read(4).unpack(ID_FORMAT).first
       requested = received = false
       m = Mutex.new
       Thread.start do
@@ -81,7 +81,7 @@ module DRbFire
         requested = true
         new_conn = TCPSocket.open(TEST_IP, TEST_PORT)
         m.synchronize do
-          new_conn.write([id].pack("L"))
+          new_conn.write([id].pack(ID_FORMAT))
           received = new_conn.read(1) rescue nil
         end
       end
@@ -111,9 +111,9 @@ module DRbFire
         begin
           timeout(2) do
             c = s.accept
-            c.write([5].pack("L"))
+            c.write([5].pack(ID_FORMAT))
             c = s.accept
-            c.write([7].pack("L"))
+            c.write([7].pack(ID_FORMAT))
           end
         rescue TimeoutError
           accepted = false
@@ -155,7 +155,7 @@ module DRbFire
         begin
           timeout(1) do
             c = s.accept
-            id = c.read(4).unpack("L").first
+            id = c.read(4).unpack(ID_FORMAT).first
           end
         rescue TimeoutError
           accepted = false
