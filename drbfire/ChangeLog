@@ -1,3 +1,7 @@
+Fri Jan 16 14:34:52 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* Release 0.0.4.
+
 Fri Jan 16 14:30:13 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* test/test_drbfire.rb: improved the overall communication tests to
