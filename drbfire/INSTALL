@@ -1,0 +1,10 @@
+From the root of the package, run:
+
+  ruby setup.rb config
+  ruby setup.rb setup
+  ruby setup.rb install
+
+Further install options are available using:
+
+  ruby setup.rb --help
+

@@ -1,3 +1,7 @@
+# Author:: Nathaniel Talbott.
+# Copyright:: Copyright (c) 2004 Nathaniel Talbott. All rights reserved.
+# License:: Ruby license.
+
 require 'optparse'
 require 'drb/drbfire'
 

@@ -1,23 +1,92 @@
+# :include:README
+#--
+# Author:: Nathaniel Talbott.
+# Copyright:: Copyright (c) 2004 Nathaniel Talbott. All rights reserved.
+# License:: Ruby license.
+
 require 'delegate'
 require 'drb'
 
+# = DRb Firewall Protocol
+# 
+# == Prerequisites
+#
+# It is assumed that you already know how to use DRb; if you don't
+# you'll need to go read up on it and understand the basics of how it
+# works before using DRbFire. DRbFire actually wraps the standard
+# protocols that DRb uses, so generally anything that applies to them
+# applies to DRbFire.
+#
+#
+# == Basic Usage
+# 
+# Using DRbFire is quite simple, and can be summed up in four steps:
+#
+# 1. Start with <tt>require 'drb/drbfire'</tt>.
+#
+# 2. Use <tt>drbfire://</tt> instead of <tt>druby://</tt> when
+#    specifying the server url.
+#
+# 3. When calling <tt>DRb.start_service</tt> on the client, specify
+#    the server's uri as the uri (as opposed to the normal usage, which
+#    is to specify *no* uri).
+#
+# 4. Specify the right configuration when calling
+#    <tt>DRb.start_service</tt>, specifically the role to use:
+#    On the server:: <tt>DRbFire::ROLE => DRbFire::SERVER</tt>
+#    On the client:: <tt>DRbFire::ROLE => DRbFire::CLIENT</tt>
+#
+# So a simple server would look like:
+#
+#   require 'drb/drbfire'
+#
+#   front = ['a', 'b', 'c']
+#   DRb.start_service('drbfire://some.server.com:5555', front, DRbFire::ROLE => DRbFire::SERVER)
+#   DRb.thread.join
+#
+# And a simple client:
+#
+#   require 'drb/drbfire'
+#
+#   DRb.start_service('drbfire://some.server.com:5555', nil, DRbFire::ROLE => DRbFire::CLIENT)
+#   DRbObject.new(nil, 'drbfire://some.server.com:5555').each do |e|
+#     p e
+#   end
+#
+# 
+# == Advanced Usage
+#
+# You can do some more interesting tricks with DRbFire, too:
+#
+# <b>Using SSL</b>:: To do this, you have to set the delegate in the
+#                    configuration (on both the server and the client) using
+#                    <tt>DRbFire::DELEGATE => DRb::DRbSSLSocket</tt>. Other
+#                    DRb protcols may also work as delegates, but only the
+#                    SSL protocol is tested.
+
+
 module DRbFire
+  # The current version.
   VERSION = [0, 0, 5]
   
-  # Configuration keys
+  # The role configuration key.
   ROLE = "#{self}::ROLE"
-  DELEGATE = "#{self}::DELEGATE"
 
-  # Configuration values
+  # The server role configuration value.
   SERVER = "#{self}::SERVER"
+
+  # The client role configuration value.
   CLIENT = "#{self}::CLIENT"
 
-  # Miscellaneous constants
-  SCHEME = "drbfire"
-  ID_FORMAT = "N"
-  DEBUG = proc{|*a| p a if($DEBUG)}
+  # The delegate configuration key.
+  DELEGATE = "#{self}::DELEGATE"
 
-  class Protocol < SimpleDelegator
+  # Miscellaneous constants
+  SCHEME = "drbfire" #:nodoc:
+  ID_FORMAT = "N" #:nodoc:
+  DEBUG = proc{|*a| p a if($DEBUG)} #:nodoc:
+
+  class Protocol < SimpleDelegator #nodoc:all
     class ClientServer
       attr_reader :signal_id
 
@@ -71,6 +140,65 @@ module DRbFire
     end
 
     class << self
+      def open_server(uri, config, signal=false)
+	DEBUG['open_server', uri, config, signal]
+        if(server?(config))
+          signal_server = open_signal_server(uri, config) unless(signal)
+          server = new(uri, delegate(config).open_server(uri, config))
+          server.signal_socket = signal_server
+          server
+        else
+          ClientServer.new(uri, config)
+        end
+      end
+
+     def open(uri, config, id=0)
+	DEBUG['open', uri, config, id]
+        unless(server?(config))
+          connection = new(uri, delegate(config).open(uri, config))
+	  DEBUG["writing id", id] if(id)
+          connection.stream.write([id].pack(ID_FORMAT)) if(id)
+          connection
+        else
+          @client_servers[parse_uri(uri).last.to_i].open
+        end
+      end
+
+      def add_client_connection(id, connection)
+        if((c = @client_servers[id]))
+          c.push(connection)
+        else
+          DEBUG['add_client_connection', 'invalid client', id]
+        end
+      end
+
+      def add_client_server(id, server)
+        @client_servers[id] = server
+      end
+
+     def parse_uri(uri)
+        if(%r{^#{SCHEME}://([^:]+):(\d+)(?:\?(.+))?$} =~ uri)
+          [$1, $2.to_i, $3]
+        else
+          raise DRb::DRbBadScheme, uri unless(/^#{SCHEME}/ =~ uri)
+          raise DRb::DRbBadURI, "Can't parse uri: #{uri}"
+        end
+      end
+
+      def uri_option(uri, config)
+        host, port, option = parse_uri(uri)
+        return "#{SCHEME}://#{host}:#{port}", option
+      end
+
+      def signal_uri(uri)
+        parts = parse_uri(uri)
+        parts[1] += 1
+        signal_uri = "#{SCHEME}://%s:%d?%s" % parts
+        signal_uri.sub(/\?$/, '')
+      end
+
+      private
+
       def server?(config)
         raise "Invalid configuration" unless(config.include?(ROLE))
         config[ROLE] == SERVER
@@ -96,65 +224,12 @@ module DRbFire
         @delegate
       end
 
-      def open_server(uri, config, signal=false)
-	DEBUG['open_server', uri, config, signal]
-        if(server?(config))
-          signal_server = open_signal_server(uri, config) unless(signal)
-          server = new(uri, delegate(config).open_server(uri, config))
-          server.signal_socket = signal_server
-          server
-        else
-          ClientServer.new(uri, config)
-        end
-      end
-
       def open_signal_server(uri, config)
         @client_servers ||= {}
         signal_server = open_server(signal_uri(uri), config, true)
         signal_server.is_signal = true
         signal_server.start_signal_server
         signal_server
-      end
-
-      def open(uri, config, id=0)
-	DEBUG['open', uri, config, id]
-        unless(server?(config))
-          connection = new(uri, delegate(config).open(uri, config))
-	  DEBUG["writing id", id] if(id)
-          connection.stream.write([id].pack(ID_FORMAT)) if(id)
-          connection
-        else
-          @client_servers[parse_uri(uri).last.to_i].open
-        end
-      end
-
-      def add_client_connection(id, connection)
-        @client_servers[id].push(connection)
-      end
-
-      def add_client_server(id, server)
-        @client_servers[id] = server
-      end
-
-      def signal_uri(uri)
-        parts = parse_uri(uri)
-        parts[1] += 1
-        signal_uri = "#{SCHEME}://%s:%d?%s" % parts
-        signal_uri.sub(/\?$/, '')
-      end
-
-      def parse_uri(uri)
-        if(%r{^#{SCHEME}://([^:]+):(\d+)(?:\?(.+))?$} =~ uri)
-          [$1, $2.to_i, $3]
-        else
-          raise DRb::DRbBadScheme, uri unless(/^#{SCHEME}/ =~ uri)
-          raise DRb::DRbBadURI, "Can't parse uri: #{uri}"
-        end
-      end
-
-      def uri_option(uri, config)
-        host, port, option = parse_uri(uri)
-        return "#{SCHEME}://#{host}:#{port}", option
       end
     end
 

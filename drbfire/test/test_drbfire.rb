@@ -1,3 +1,7 @@
+# Author:: Nathaniel Talbott.
+# Copyright:: Copyright (c) 2004 Nathaniel Talbott. All rights reserved.
+# License:: Ruby license.
+
 require 'test/unit'
 require 'socket'
 require 'timeout'

@@ -1,0 +1,48 @@
+= DRbFire
+
+The DRb Firewall Protocol, or DRbFire, is a DRb protocol that allows 
+easy bidirectional communication in the presence of a firewall.
+
+
+== Usage
+
+DRbFire's usage is documented in the source using RDoc.
+
+
+== Installation
+
+See the INSTALL file.
+
+
+== History
+
+See the ChangeLog file.
+
+
+== Feedback
+
+Feedback of any kind is welcome; you can contact me (Nathaniel
+Talbott) at drbfire@talbott.ws.
+
+
+== More Information
+
+DRbFire's home is at http://rubyforge.org/projects/drbfire.
+
+
+== Copyright
+
+Copyright (c) 2004 Nathaniel Talbott. All Rights Reserved.
+
+
+== License
+
+DRbFire is free software distributed under the Ruby license. See the
+COPYING file in the standard Ruby distribution for details.
+
+
+== Warranty
+
+This software is provided "as is" and without any express or implied
+warranties, including, without limitation, the implied warranties of
+merchantibility and fitness for a particular purpose.
