@@ -47,7 +47,10 @@ module DRbFire
         signal2 = TCPSocket.open(TEST_IP, TEST_SIGNAL_PORT)
         begin
           timeout(1) do
-            assert_equal(1, signal.read(4).unpack("L").first)
+            c = TCPSocket.open(TEST_IP, TEST_PORT)
+            id = signal.read(4).unpack("L").first
+            c.write([id].pack("L"))
+            assert_equal(1, id)
             assert_equal(2, signal2.read(4).unpack("L").first)
           end
         ensure

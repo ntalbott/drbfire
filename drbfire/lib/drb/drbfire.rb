@@ -44,6 +44,7 @@ module DRbFire
 
   # Miscellaneous constants
   SCHEME = "drbfire"
+  ID_FORMAT = "N"
 
   class Protocol < SimpleDelegator
     class ClientServer
@@ -75,7 +76,7 @@ module DRbFire
     class ClientServerProxy
       def initialize(connection, id)
         @connection = connection
-        @connection.stream.write([id].pack("L"))
+        @connection.stream.write([id].pack(ID_FORMAT))
         @queue = Queue.new
       end
 
@@ -135,7 +136,7 @@ module DRbFire
       def open(uri, config, id=0)
         unless(server?(config))
           connection = new(delegate(config).open(uri, config))
-          connection.stream.write([id].pack("L")) if(id)
+          connection.stream.write([id].pack(ID_FORMAT)) if(id)
           connection
         else
           @client_servers[parse_uri(uri).last.to_i].open
@@ -198,7 +199,7 @@ module DRbFire
           rescue IOError
             return nil
           end
-          id = connection.stream.read(4).unpack("L").first
+          id = connection.stream.read(4).unpack(ID_FORMAT).first
           return connection if(id == 0)
           self.class.client_servers[id].push(connection)
         end
@@ -225,7 +226,7 @@ module DRbFire
     end
 
     def read_signal_id
-      stream.read(4).unpack("L").first
+      stream.read(4).unpack(ID_FORMAT).first
     end
   end
 end
