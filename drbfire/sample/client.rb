@@ -1,3 +1,4 @@
+require 'optparse'
 require 'drb/drbfire'
 
 class Back
@@ -8,10 +9,29 @@ class Back
   end
 end
 
-host = ARGV[0] || '127.0.0.2'
-url = "drbfire://#{host}:3333"
+options = {
+  :host => '127.0.0.1',
+  :ssl => false,
+}
 
-DRb.start_service(url, nil, DRbFire::ROLE => DRbFire::CLIENT)
+ARGV.options do |o|
+  o.on("-o", "--host=HOST", String, "The host to use"){|options[:host]|}
+  o.on("-s", "--use-ssl", "Use SSL"){|options[:ssl]|}
+  o.on("-h", "--help", "This message"){puts o; exit}
+  o.parse!
+end
+
+config = {
+  DRbFire::ROLE => DRbFire::CLIENT,
+}
+if(options[:ssl])
+  require 'drb/ssl'
+  config.update(DRbFire::DELEGATE => DRb::DRbSSLSocket)
+end
+
+url = "drbfire://#{options[:host]}:3333"
+
+DRb.start_service(url, nil, config)
 s = DRbObject::new(nil, url)
 b = Back::new
 s.m(b)

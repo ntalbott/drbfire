@@ -1,38 +1,6 @@
 require 'delegate'
 require 'drb'
 
-if(false)
-  Thread.abort_on_exception = true
-  
-  require 'pp'
-
-  class TCPSocket
-    alias _read read
-    def read(amount)
-      pp [addr, 'reading', amount]
-      value = _read(amount)
-      pp [addr, 'read', value]
-      value
-    end
-
-    alias _write write
-    def write(value)
-      pp [addr, 'writing', value]
-      _write(value)
-    end
-  end
-
-  class TCPServer
-    alias _accept accept
-    def accept
-      pp ['accepting', addr]
-      client = _accept
-      pp ['accepted', client.peeraddr]
-      client
-    end
-  end
-end
-
 module DRbFire
   # Configuration keys
   ROLE = "#{self}::ROLE"
