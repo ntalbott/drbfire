@@ -85,7 +85,7 @@ require 'timeout'
 
 module DRbFire
   # The current version.
-  VERSION = [0, 0, 7]
+  VERSION = [0, 1, 0]
   
   # The role configuration key.
   ROLE = "#{self}::ROLE"
@@ -102,9 +102,9 @@ module DRbFire
   # Miscellaneous constants
   SCHEME = "drbfire" #:nodoc:
   ID_FORMAT = "N" #:nodoc:
-  INCOMING_CONN = "1"
-  OUTGOING_CONN = "2"
-  SIGNAL_CONN = "3"
+  INCOMING_CONN = "1" #:nodoc:
+  OUTGOING_CONN = "2" #:nodoc:
+  SIGNAL_CONN = "3" #:nodoc:
 
   class Protocol < SimpleDelegator #nodoc:all
     class ClientServer

@@ -1,3 +1,10 @@
+Wed Feb 25 20:56:11 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* Release 0.1.0. Really.
+
+	* lib/drb/drbfire.rb: Updated the version number. Also added a few
+	  nodoc directives.
+
 Wed Feb 25 20:05:10 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* Release 0.1.0.
