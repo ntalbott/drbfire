@@ -4,8 +4,9 @@ require 'drb/drbfire'
 class Back
   include DRbUndumped
 
-  def m
+  def m(param)
     p "m called"
+    param.n
   end
 end
 

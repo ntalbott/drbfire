@@ -1,3 +1,13 @@
+Fri Jan 16 14:30:13 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* test/test_drbfire.rb: improved the overall communication tests to
+	  include client-side callbacks.
+
+	* lib/drb/drbfire.rb: fixed a bug with client-side callbacks caused by
+	  improperly reporting the uri.
+
+	* samples/*.rb: improved the samples to include client-side callbacks.
+
 Fri Jan 16 11:32:40 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* Release 0.0.3.

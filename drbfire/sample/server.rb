@@ -6,7 +6,15 @@ class Front
 
   def m(client)
     p "m called"
-    client.m
+    client.m(Param.new)
+  end
+end
+
+class Param
+  include DRbUndumped
+
+  def n
+    p "n called"
   end
 end
 

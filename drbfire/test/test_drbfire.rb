@@ -199,15 +199,35 @@ module DRbFire
     class Front
       include DRbUndumped
 
-      attr_reader :called
+      class Param
+	include DRbUndumped
+
+	attr_reader :called
+
+	def initialize
+	  @called = false
+	end
+
+	def n
+	  @called = true
+	end
+      end
+
+      attr_reader :called, :param
 
       def initialize
         @called = 0
+	@param = Param.new
+      end
+
+      def param_called
+	@param.called
       end
       
-      def m(back=nil)
+      def m(args={})
         @called += 1
-        back.m if(back)
+        args[:back].m(:param => @param) if(args[:back])
+	args[:param].n if(args[:param])
       end
     end
 
@@ -232,10 +252,11 @@ module DRbFire
         back = Front.new
         assert_nothing_raised do
           timeout(1) do
-            client_front.m(back)
+            client_front.m(:back => back)
           end
         end
         assert(0 < config.front.called, "Server not called")
+	assert(config.front.param_called, "Server not called back")
         assert_equal(1, back.called, "Client not called")
       ensure
         client.stop_service if(client)

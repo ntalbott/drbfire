@@ -77,6 +77,10 @@ module DRbFire
               def parse_uri(uri)
                 @delegate.parse_uri(uri)
               end
+
+	      def uri_option(uri, config)
+		@delegate.uri_option(uri, config)
+	      end
             end
           end
           @delegate.delegate = self
@@ -85,9 +89,10 @@ module DRbFire
       end
 
       def open_server(uri, config, signal=false)
+	DEBUG['open_server', uri, config, signal]
         if(server?(config))
           signal_server = open_signal_server(uri, config) unless(signal)
-          server = new(delegate(config).open_server(uri, config))
+          server = new(uri, delegate(config).open_server(uri, config))
           server.signal_socket = signal_server
           server
         else
@@ -104,8 +109,9 @@ module DRbFire
       end
 
       def open(uri, config, id=0)
+	DEBUG['open', uri, config, id]
         unless(server?(config))
-          connection = new(delegate(config).open(uri, config))
+          connection = new(uri, delegate(config).open(uri, config))
 	  DEBUG["writing id", id] if(id)
           connection.stream.write([id].pack(ID_FORMAT)) if(id)
           connection
@@ -136,12 +142,12 @@ module DRbFire
       end
     end
 
-    attr_writer :signal_socket
-    attr_reader :signal_id
-    attr_writer :is_signal
+    attr_writer :signal_socket, :is_signal
+    attr_reader :signal_id, :uri
 
-    def initialize(delegate)
-      super
+    def initialize(uri, delegate)
+      super(delegate)
+      @uri = uri
       @signal_socket = nil
       @signal_server_thread = nil
       @is_signal = false
@@ -160,13 +166,13 @@ module DRbFire
 
     def accept
       if(@is_signal)
-        connection = self.class.new(__getobj__.accept)
+        connection = self.class.new(nil, __getobj__.accept)
         connection.is_signal = true
         connection
       else
         while(__getobj__.instance_eval{@socket})
           begin
-            connection = self.class.new(__getobj__.accept)
+            connection = self.class.new(nil, __getobj__.accept)
           rescue IOError
             return nil
           end
