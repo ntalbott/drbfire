@@ -2,6 +2,9 @@ require 'test/unit'
 require 'socket'
 require 'timeout'
 require 'pp'
+require 'ostruct'
+require 'drb/drb'
+require 'drb/ssl'
 
 require 'drb/drbfire'
 
@@ -29,7 +32,7 @@ module DRbFire
         end
         s = Protocol::ClientServer.new(TEST_URI, TEST_CLIENT_CONFIG)
         c = s.accept
-        assert_equal("a", c.stream.recv(1))
+        assert_equal("a", c.stream.read(1))
       ensure
         main.close if(main)
         signal.close if(signal)
@@ -44,8 +47,8 @@ module DRbFire
         signal2 = TCPSocket.open(TEST_IP, TEST_SIGNAL_PORT)
         begin
           timeout(1) do
-            assert_equal(1, signal.recv(4).unpack("L").first)
-            assert_equal(2, signal2.recv(4).unpack("L").first)
+            assert_equal(1, signal.read(4).unpack("L").first)
+            assert_equal(2, signal2.read(4).unpack("L").first)
           end
         ensure
           s.close
@@ -67,19 +70,24 @@ module DRbFire
       main = TCPSocket.open(TEST_IP, TEST_PORT)
       main.write([0].pack("L"))
       signal = TCPSocket.open(TEST_IP, TEST_SIGNAL_PORT)
-      id = signal.recv(4).unpack("L").first
+      id = signal.read(4).unpack("L").first
       requested = received = false
       m = Mutex.new
       Thread.start do
-        signal.recv(1)
+        signal.read(1)
         requested = true
         new_conn = TCPSocket.open(TEST_IP, TEST_PORT)
         m.synchronize do
           new_conn.write([id].pack("L"))
-          received = new_conn.recv(1)
+          received = new_conn.read(1) rescue nil
         end
       end
-      c = Protocol.open("#{TEST_URI}?#{id}", TEST_SERVER_CONFIG)
+      c = nil
+      assert_nothing_raised do
+        timeout(1) do
+          c = Protocol.open("#{TEST_URI}?#{id}", TEST_SERVER_CONFIG)
+        end
+      end
       c.stream.write("a")
       assert(requested)
       m.synchronize do
@@ -144,7 +152,7 @@ module DRbFire
         begin
           timeout(1) do
             c = s.accept
-            id = c.recv(4).unpack("L").first
+            id = c.read(4).unpack("L").first
           end
         rescue TimeoutError
           accepted = false
@@ -200,28 +208,40 @@ module DRbFire
       end
     end
 
-    def check_communication(start_server = true, stop_server = true, server = nil, front = Front.new)
+    def check_communication
+      config = OpenStruct.new(
+        :start_server => true,
+        :stop_server => true,
+        :server => nil,
+        :front => Front.new,
+        :server_config => TEST_SERVER_CONFIG,
+        :client_config => TEST_CLIENT_CONFIG)
+      yield(config) if(block_given?)
       begin
-        server = DRb.start_service(TEST_URI, front, TEST_SERVER_CONFIG) if(start_server)
+        config.server = DRb.start_service(TEST_URI, config.front, config.server_config) if(config.start_server)
         client = nil
         assert_nothing_raised do
           timeout(1) do
-            client = DRb.start_service(TEST_URI, nil, TEST_CLIENT_CONFIG)
+            client = DRb.start_service(TEST_URI, nil, config.client_config)
           end
         end
         client_front = DRbObject.new(nil, TEST_URI)
         back = Front.new
-        client_front.m(back)
-        assert(0 < front.called, "Server not called")
+        assert_nothing_raised do
+          timeout(1) do
+            client_front.m(back)
+          end
+        end
+        assert(0 < config.front.called, "Server not called")
         assert_equal(1, back.called, "Client not called")
       ensure
         client.stop_service if(client)
-        server.stop_service if(stop_server)
+        config.server.stop_service if(config.server && config.stop_server)
       end
       assert_nothing_raised do
         TCPServer.new(TEST_IP, TEST_PORT).close
-      end if(stop_server)
-      return server, front
+      end if(config.stop_server)
+      return config.server, config.front
     end
     
     def test_normal_communication
@@ -229,8 +249,24 @@ module DRbFire
     end
 
     def test_connect_twice
-      server, front = check_communication(true, false)
-      check_communication(false, true, server, front)
+      server, front = check_communication do |config|
+        config.start_server = true
+        config.stop_server = false
+      end
+      check_communication do |config|
+        config.start_server = false
+        config.stop_server = true
+        config.server = server
+        config.front = front
+      end
+    end
+
+    def test_ssl_communication
+      check_communication do |config|
+        config.server_config = TEST_SERVER_CONFIG.dup.update(DELEGATE => DRb::DRbSSLSocket,
+          :SSLCertName => [ ["C","US"], ["O","localhost"], ["CN", "Temporary"] ])
+        config.client_config = TEST_CLIENT_CONFIG.dup.update(DELEGATE => DRb::DRbSSLSocket)
+      end
     end
   end
 end

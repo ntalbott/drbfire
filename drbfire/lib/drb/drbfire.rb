@@ -1,3 +1,4 @@
+require 'delegate'
 require 'drb'
 
 if(false)
@@ -6,19 +7,11 @@ if(false)
   require 'pp'
 
   class TCPSocket
-    alias _recvfrom recvfrom
-    def recvfrom(amount)
-      pp [addr, "receiving from", amount]
-      value = _recvfrom(amount)
-      pp [addr, 'received from', value]
-      value
-    end
-    
-    alias _recv recv
-    def recv(amount)
-      pp [addr, 'receiving', amount]
-      value = _recv(amount)
-      pp [addr, 'received', value]
+    alias _read read
+    def read(amount)
+      pp [addr, 'reading', amount]
+      value = _read(amount)
+      pp [addr, 'read', value]
       value
     end
 
@@ -41,12 +34,18 @@ if(false)
 end
 
 module DRbFire
+  # Configuration keys
   ROLE = "#{self}::ROLE"
+  DELEGATE = "#{self}::DELEGATE"
+
+  # Configuration values
   SERVER = "#{self}::SERVER"
   CLIENT = "#{self}::CLIENT"
+
+  # Miscellaneous constants
   SCHEME = "drbfire"
 
-  class Protocol < DRb::DRbTCPSocket
+  class Protocol < SimpleDelegator
     class ClientServer
       attr_reader :signal_id
 
@@ -55,7 +54,7 @@ module DRbFire
         @config = config
         @connection = Protocol.open(Protocol.signal_uri(uri), config, nil)
         @connection.is_signal = true
-        @signal_id = @connection.recv_signal_id
+        @signal_id = @connection.read_signal_id
       end
 
       def uri
@@ -63,7 +62,7 @@ module DRbFire
       end
 
       def accept
-        @connection.stream.recv(1)
+        @connection.stream.read(1)
         connection = Protocol.open(@uri, @config, @signal_id)
         connection
       end
@@ -98,10 +97,26 @@ module DRbFire
         config[ROLE] == SERVER
       end
 
+      def delegate(config)
+        unless(defined?(@delegate))
+          @delegate = Class.new(config[DELEGATE] || DRb::DRbTCPSocket) do
+            class << self
+              attr_writer :delegate
+
+              def parse_uri(uri)
+                @delegate.parse_uri(uri)
+              end
+            end
+          end
+          @delegate.delegate = self
+        end
+        @delegate
+      end
+
       def open_server(uri, config, signal=false)
         if(server?(config))
           signal_server = open_signal_server(uri, config) unless(signal)
-          server = super(uri, config)
+          server = new(delegate(config).open_server(uri, config))
           server.signal_socket = signal_server
           server
         else
@@ -119,7 +134,7 @@ module DRbFire
 
       def open(uri, config, id=0)
         unless(server?(config))
-          connection = super(uri, config)
+          connection = new(delegate(config).open(uri, config))
           connection.stream.write([id].pack("L")) if(id)
           connection
         else
@@ -153,7 +168,7 @@ module DRbFire
     attr_reader :signal_id
     attr_writer :is_signal
 
-    def initialize(uri, socket, config={})
+    def initialize(delegate)
       super
       @signal_socket = nil
       @signal_server_thread = nil
@@ -164,7 +179,7 @@ module DRbFire
       if(@signal_server_thread)
         @signal_server_thread.kill
       end
-      super
+      __getobj__.close
       if(@signal_socket)
         @signal_socket.close
         @signal_socket = nil
@@ -173,19 +188,19 @@ module DRbFire
 
     def accept
       if(@is_signal)
-        connection = super
+        connection = self.class.new(__getobj__.accept)
         connection.is_signal = true
         connection
       else
-        while(@socket)
+        while(__getobj__.instance_eval{@socket})
           begin
-            connection = super
+            connection = self.class.new(__getobj__.accept)
           rescue IOError
             return nil
           end
-          id = connection.stream.recv(4).unpack("L").first
+          id = connection.stream.read(4).unpack("L").first
           return connection if(id == 0)
-          Protocol.client_servers[id].push(connection)
+          self.class.client_servers[id].push(connection)
         end
       end
     end
@@ -209,8 +224,8 @@ module DRbFire
       end
     end
 
-    def recv_signal_id
-      stream.recv(4).unpack("L").first
+    def read_signal_id
+      stream.read(4).unpack("L").first
     end
   end
 end
