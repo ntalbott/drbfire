@@ -8,7 +8,10 @@ class Back
   end
 end
 
-DRb.start_service('drbfire://127.0.0.1:3333', nil, DRbFire::ROLE => DRbFire::CLIENT)
-s = DRbObject::new(nil, 'drbfire://127.0.0.1:3333')
+host = ARGV[0] || '127.0.0.2'
+url = "drbfire://#{host}:3333"
+
+DRb.start_service(url, nil, DRbFire::ROLE => DRbFire::CLIENT)
+s = DRbObject::new(nil, url)
 b = Back::new
 s.m(b)
