@@ -1,3 +1,7 @@
+Fri Jan 16 11:30:58 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
+
+	* lib/drb/drbfire.rb: added debugging code.
+
 Fri Jan 16 11:11:02 2004  Nathaniel Talbott  <nathaniel@talbott.ws>
 
 	* samples/server.rb: improved argument handling and added the ability
