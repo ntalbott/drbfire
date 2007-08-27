@@ -40,34 +40,35 @@ module DRbFire
       include DRbUndumped
 
       class Param
-	include DRbUndumped
+        include DRbUndumped
 
-	attr_reader :called
+        attr_reader :called
 
-	def initialize
-	  @called = false
-	end
+        def initialize
+          @called = false
+        end
 
-	def n
-	  @called = true
-	end
+        def n
+          @called = true
+        end
       end
 
       attr_reader :called, :param
 
       def initialize
         @called = 0
-	@param = Param.new
+        @param = Param.new
       end
 
       def param_called
-	@param.called
+        @param.called
       end
       
       def m(args={})
         @called += 1
+        
         args[:back].m(:param => @param) if(args[:back])
-	args[:param].n if(args[:param])
+        args[:param].n if(args[:param])
       end
     end
 
@@ -82,6 +83,7 @@ module DRbFire
       yield(config) if(block_given?)
       begin
         config.server = DRb.start_service(TEST_URI, config.front, config.server_config) if(config.start_server)
+        DRb.remove_server config.server # Hack to deal with running multiple servers in the same process - we always want the client server to be picked up.
         client = nil
         assert_nothing_raised do
           timeout(1) do
@@ -96,7 +98,7 @@ module DRbFire
           end
         end
         assert(0 < config.front.called, "Server not called")
-	assert(config.front.param_called, "Server not called back")
+        assert(config.front.param_called, "Server not called back")
         assert_equal(1, back.called, "Client not called")
       ensure
         client.stop_service if(client)
