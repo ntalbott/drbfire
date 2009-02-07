@@ -162,7 +162,15 @@ module DRbFire
       def open_server(uri, config)
         if(server?(config))
           @client_servers ||= {}
-          new(uri, delegate(config).open_server(uri, config))
+          
+          sock = delegate(config).open_server(uri, config)
+          
+          # get the uri from the delegate, and replace the scheme with drbfire://
+          # this allows randomly chosen ports (:0) to work
+          scheme = sock.uri.match(/^(.*):\/\//)[1]
+          drbfire_uri = sock.uri.sub(scheme, SCHEME)
+          
+          new(drbfire_uri, sock)
         else
           ClientServer.new(uri, config)
         end
