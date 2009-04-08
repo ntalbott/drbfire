@@ -160,6 +160,9 @@ module DRbFire
 
     class << self
       def open_server(uri, config)
+        # make sure the scheme is ours
+        parse_uri(uri)
+        
         if(server?(config))
           @client_servers ||= {}
           
